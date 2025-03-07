@@ -99,7 +99,7 @@ func extractErrorMessage(call *ast.CallExpr) (string, string) {
 		// fmt.Errorf takes a format string and optional arguments
 		msgArg = call.Args[0]
 
-	case "log", "logger":
+	case "log", "logger", "Log", "Logf", "LogError", "LogErrorf":
 		// Log functions take format string as first argument
 		msgArg = call.Args[0]
 
@@ -134,8 +134,21 @@ func extractErrorMessage(call *ast.CallExpr) (string, string) {
 }
 
 func getErrorConstructName(call *ast.CallExpr) string {
-	// Check for selector expressions (e.g., errors.New, fmt.Errorf)
+	// First, handle chained calls like logger.Info().Logf()
 	if selExpr, ok := call.Fun.(*ast.SelectorExpr); ok {
+		// Check if the selector's X is another call expression (method chaining)
+		if _, ok := selExpr.X.(*ast.CallExpr); ok {
+			// This handles chained methods like logger.Info().Logf()
+			// For log methods specifically
+			if selExpr.Sel.Name == "Logf" ||
+				selExpr.Sel.Name == "LogErrorf" ||
+				selExpr.Sel.Name == "LogError" ||
+				selExpr.Sel.Name == "Log" {
+				return selExpr.Sel.Name
+			}
+		}
+
+		// Check for standard selector expressions (e.g., errors.New, fmt.Errorf)
 		if pkgIdent, ok := selExpr.X.(*ast.Ident); ok {
 			// Common error construction patterns
 			if pkgIdent.Name == "errors" && selExpr.Sel.Name == "New" {

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"log"
+
+	moovlog "github.com/moov-io/base/log"
 )
 
 func duplicateErrorsNew() {
@@ -50,4 +52,18 @@ func NewUserError(msg string) error {
 
 func NewItemError(msg string) error {
 	return errors.New(msg)
+}
+
+func moovLogger() {
+	logger := moovlog.NewTestLogger()
+
+	logger = logger.With(moovlog.Fields{
+		"id": moovlog.String("foo"),
+	})
+
+	err := errors.New("file not found")
+
+	logger.Info().Logf("problem reading file: %v", err)      // want "duplicate error message"
+	logger.Info().Logf("problem reading file: %v", err)      // want "duplicate error message"
+	logger.Info().LogErrorf("problem reading file: %v", err) // want "duplicate error message"
 }
